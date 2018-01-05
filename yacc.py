@@ -59,9 +59,8 @@ def p_primary_expression(p):
 
 
 def p_postfix_expression(p):
-    """postfix_expression : primary_expression
-                         | postfix_expression '(' ')'
-                         | postfix_expression '(' argument_expression_list ')'"""
+    """postfix_expression : postfix_expression '(' ')'
+                          | primary_expression '(' argument_expression_list ')'"""
     p[0] = ('postfix_expression', *p[1:])
 
 

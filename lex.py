@@ -15,20 +15,27 @@ tokens = [
 literals = r";{}()"
 
 t_INCLUDE = r'\#include'
-t_STRING_LITERAL = r'"(\.|[^\"])*"'
+
+
+def t_STRING_LITERAL(t):
+    r"""\"(\.|[^\"])*\""""
+    t.value = ('string', str(t.value).strip('"'))
+    return t
+
 
 t_ignore = ' \t\v\n\f'
 
 
 def t_NUMBER(t):
     r"""\d+"""
-    t.value = int(t.value)
+    t.value = ('int', int(t.value))
     return t
 
 
 def t_IDENTIFIER(t):
     r"""[a-zA-Z_][a-zA-Z_0-9]*"""
     t.type = reserved.get(t.value, 'IDENTIFIER')
+    t.value = ('id', t.value)
     return t
 
 
