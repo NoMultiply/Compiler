@@ -4,3 +4,6 @@ parser.out
 parsetab.py
 test.ll
 .DS_Store
+main.c
+main.cpp
+1.txt
