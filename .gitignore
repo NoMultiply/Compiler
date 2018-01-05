@@ -3,3 +3,4 @@ __pycache__/
 parser.out
 parsetab.py
 test.ll
+.DS_Store
