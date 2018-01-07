@@ -78,7 +78,6 @@ t_EQ_OP = r'\=\='
 t_NE_OP = r'\!\='
 t_LEFT_OP = r'\<\<'
 t_RIGHT_OP = r'\>\>'
-t_STRING_LITERAL = r'"(\.|[^\"])*"'
 t_MUL_ASSIGN = r'\*\='
 t_DIV_ASSIGN = r'\/\='
 t_MOD_ASSIGN = r'\%\='
@@ -92,6 +91,12 @@ t_OR_ASSIGN = r'\|\='
 
 
 t_ignore = ' \t\v\n\f'
+
+
+def t_STRING_LITERAL(t):
+    r"""\"(\.|[^\"])*\""""
+    t.value = ('string', t.value)
+    return t
 
 def t_CHARACTER(t):
     r"""\'(\\.|[^\\\'])+\'"""

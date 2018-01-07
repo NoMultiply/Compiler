@@ -200,11 +200,11 @@ class YaccParser(object):
         """declaration : declaration_specifiers ';'
                        | declaration_specifiers init_declarator_list ';'
         """
-        if len(p) == 4:
-            retult = parse_declaration_specifiers(p[1])
-            if retult:
-                declarator_list = parse_init_declarator_list(p[2])
-                type_list.extend(declarator_list)
+        # if len(p) == 4:
+        #     retult = parse_declaration_specifiers(p[1])
+        #     if retult:
+        #         declarator_list = parse_init_declarator_list(p[2])
+        #         type_list.extend(declarator_list)
 
         p[0] = ('declaration', *p[1:])
 
@@ -258,7 +258,7 @@ class YaccParser(object):
                           | enum_specifier
                           | TYPE_NAME
         """
-        p[0] = ('p_type_specifier', *p[1:])
+        p[0] = ('type_specifier', *p[1:])
 
     # 结构或联合说明
     def p_struct_or_union_specifier(self, p):
@@ -339,7 +339,7 @@ class YaccParser(object):
         """type_qualifier : CONST
                           | VOLATILE
         """
-        p[0] = ('enumerator', *p[1:])
+        p[0] = ('type_qualifier', *p[1:])
 
     # 声明
     def p_declarator(self, p):
