@@ -56,6 +56,24 @@ def insert_val(module: ir.Module, scope_stack: list, builder: ir.IRBuilder, type
     }
     return val
 
+
+def insert_array(module: ir.Module, scope_stack: list, builder: ir.IRBuilder, type: list, num, val_name: tuple, val_value = None):
+    array_type = ir.ArrayType(type_map[type[-1]], num.constant)
+    if builder is None:
+        val = ir.GlobalVariable(module, array_type, module.get_unique_name(val_name[1]))
+        if val_value:
+            val.initializer = val_value
+    else:
+        val = builder.alloca(array_type)
+        if val_value:
+            builder.store(val_value, val)
+    scope_stack[-1][val_name[1]] = {
+        'type': 'val',
+        'value': val
+    }
+    return val
+
+
 def insert_string(module: ir.Module, scope_stack: list, builder: ir.IRBuilder, raw_data: str, prt = False):
     try:
         global_string = scope_stack[0][raw_data]

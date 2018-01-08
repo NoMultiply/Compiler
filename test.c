@@ -1,9 +1,10 @@
 #include <stdio.h>
 
 int main() {
-    int i = 0;
-    for (i = 0; i < 3; ++i) {
-        printf("%d\n", i);
+    int a[10], i;
+    for (i = 0; i < 10; i++) {
+        a[i] = i + 1;
+        printf("%d\n", a[i]);
     }
     return 0;
 }

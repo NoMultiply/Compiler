@@ -1,5 +1,7 @@
 from IRLibs import *
 
+loop_stack = []
+
 def get_identifier(scope_stack, id):
     identifier = None
     for scope in reversed(scope_stack):
@@ -13,6 +15,8 @@ def get_identifier(scope_stack, id):
 def get_pointer(scope_stack, builder: ir.IRBuilder, item):
     if isinstance(item, tuple) and item[0] == 'id':
         item = get_identifier(scope_stack, item[1])['value']
+    elif isinstance(item, tuple) and item[0] == 'array_index':
+        item = item[1]
     return item
 
 def get_value(scope_stack, builder: ir.IRBuilder, item):
@@ -20,6 +24,8 @@ def get_value(scope_stack, builder: ir.IRBuilder, item):
         item = get_identifier(scope_stack, item[1])['value']
         if item.opname == 'alloca':
             item = builder.load(item)
+    elif isinstance(item, tuple) and item[0] == 'array_index':
+        item = builder.load(item[1])
     return item
 
 def parse_postfix_expression(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
@@ -44,7 +50,11 @@ def parse_postfix_expression(exp, module: ir.Module, scope_stack: list, builder:
             temp = builder.sub(value, int_type(1))
         builder.store(temp, get_pointer(scope_stack, builder, postfix_expression))
         return value
-
+    elif len(exp) == 5 and exp[2] == '[':
+        array = get_pointer(scope_stack, builder, parse_postfix_expression(exp[1], module, scope_stack, builder))
+        index = get_value(scope_stack, builder, parse_expression(exp[3], module, scope_stack, builder))
+        temp = builder.gep(array, [int_type(0), index], True)
+        return ('array_index', temp)
 
 def parse_primary_expression(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 4:
@@ -179,8 +189,8 @@ def parse_assignment_operator(exp):
     return exp[1]
 
 
-def parse_constant_expression(exp):
-    pass
+def parse_constant_expression(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
+    return parse_conditional_expression(exp[1], module, scope_stack, builder)
 
 
 def parse_expression(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
@@ -329,6 +339,8 @@ def parse_declaration(exp, module: ir.Module, scope_stack: list, builder: ir.IRB
             for init_declarator in init_declarator_list:
                 if init_declarator[0][0] == 'id':
                     insert_val(module, scope_stack, builder, declaration_specifiers, init_declarator[0], init_declarator[1])
+                elif init_declarator[0][0] == 'array':
+                    insert_array(module, scope_stack, builder, declaration_specifiers, init_declarator[0][2], init_declarator[0][1], init_declarator[1])
     elif len(exp) == 2:
         pass
 
@@ -356,7 +368,7 @@ def parse_init_declarator_list(exp, module: ir.Module, scope_stack: list, builde
 
 
 def parse_init_declarator(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
-    declarator = parse_declarator(exp[1])
+    declarator = parse_declarator(exp[1], module, scope_stack, builder)
     initializer = None
     if len(exp) == 4:
         initializer = parse_initializer(exp[3], module, scope_stack, builder)
@@ -419,26 +431,26 @@ def parse_type_qualifier(exp):
     return exp[1][1]
 
 
-def parse_declarator(exp):
+def parse_declarator(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 2:
-        return parse_direct_declarator(exp[1])
+        return parse_direct_declarator(exp[1], module, scope_stack, builder)
     else:
-        return ('pointer', parse_pointer(exp[1]), parse_direct_declarator(exp[2]))
+        return ('pointer', parse_pointer(exp[1]), parse_direct_declarator(exp[2], module, scope_stack, builder))
 
 
-def parse_direct_declarator(exp):
+def parse_direct_declarator(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 2:
         return exp[1]
     elif len(exp) == 5:
         if exp[2] == '(' and exp[3][0] == 'parameter_type_list':
-            return ('function', parse_direct_declarator(exp[1]), parse_parameter_type_list(exp[3]))
+            return ('function', parse_direct_declarator(exp[1], module, scope_stack, builder), parse_parameter_type_list(exp[3], module, scope_stack, builder))
         elif exp[2] == '(' and exp[3][0] == 'identifier_list':
             pass
         elif exp[2] == '[':
-            pass
+            return ('array', parse_direct_declarator(exp[1], module, scope_stack, builder), parse_constant_expression(exp[3], module, scope_stack, builder))
     elif len(exp) == 4:
         if exp[2] == '(':
-            return ('function', parse_direct_declarator(exp[1]), [])
+            return ('function', parse_direct_declarator(exp[1], module, scope_stack, builder), [])
         elif exp[2] == '[':
             pass
 
@@ -458,29 +470,29 @@ def parse_type_qualifier_list(exp):
     pass
 
 
-def parse_parameter_type_list(exp):
+def parse_parameter_type_list(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     result = []
-    result.extend(parse_parameter_list(exp[1]))
+    result.extend(parse_parameter_list(exp[1], module, scope_stack, builder))
     if len(exp) == 4:
         result.append(exp[3])
     return result
 
 
-def parse_parameter_list(exp):
+def parse_parameter_list(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     result = []
     if len(exp) == 2:
-        result.append(parse_parameter_declaration(exp[1]))
+        result.append(parse_parameter_declaration(exp[1], module, scope_stack, builder))
     elif len(exp) == 4:
-        result.extend(parse_parameter_list(exp[1]))
-        result.append(parse_parameter_declaration(exp[3]))
+        result.extend(parse_parameter_list(exp[1], module, scope_stack, builder))
+        result.append(parse_parameter_declaration(exp[3], module, scope_stack, builder))
     return result
 
 
-def parse_parameter_declaration(exp):
+def parse_parameter_declaration(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     result = []
     result.append(parse_declaration_specifiers(exp[1]))
     if len(exp) == 3 and exp[2][0] == 'declarator':
-        result.append(parse_declarator(exp[2]))
+        result.append(parse_declarator(exp[2], module, scope_stack, builder))
     elif len(exp) == 3 and exp[2][0] == 'abstract_declarator':
         result.append(parse_abstract_declarator(exp[2]))
     return result
@@ -536,7 +548,32 @@ def parse_statement_list(exp, module: ir.Module, scope_stack: list, builder: ir.
 
 
 def parse_labeled_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
-    pass
+    if len(exp) == 5:
+        label_block = builder.block
+        case_block = builder.append_basic_block('case_block')
+        builder.position_at_end(label_block)
+        builder.branch(case_block)
+        builder.position_at_end(loop_stack[-1]['start'])
+        constant = get_value(scope_stack, builder, parse_constant_expression(exp[2], module, scope_stack, builder))
+        condition = builder.icmp_unsigned('==', loop_stack[-1]['value'], constant)
+        with builder.if_then(condition):
+            builder.branch(case_block)
+        loop_stack[-1]['start'] = builder.block
+        builder.position_at_end(case_block)
+        parse_statement(exp[4], module, scope_stack, builder)
+    elif len(exp) == 4 and exp[1][1] == 'default':
+        label_block = builder.block
+        default_block = builder.append_basic_block('default')
+        builder.position_at_end(label_block)
+        builder.branch(default_block)
+        builder.position_at_end(loop_stack[-1]['start'])
+        with builder.if_then(ir.IntType(1)(1)):
+            builder.branch(default_block)
+        loop_stack[-1]['start'] = builder.block
+        builder.position_at_end(default_block)
+        parse_statement(exp[3], module, scope_stack, builder)
+
+
 
 
 def parse_compound_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
@@ -584,11 +621,95 @@ def parse_selection_statement(exp, module: ir.Module, scope_stack: list, builder
                 parse_statement(exp[5], module, scope_stack, builder)
             with otherwise:
                 parse_statement(exp[7], module, scope_stack, builder)
+    elif len(exp) == 6 and exp[1][1] == 'switch':
+        cur_block = builder.block
+        start_block = builder.append_basic_block('start_switch')
+        label_block = builder.append_basic_block('label_switch')
+        end_block = builder.append_basic_block('end_switch')
+        loop_stack.append({
+            'start': start_block,
+            'end': end_block,
+            'value': get_value(scope_stack, builder, parse_expression(exp[3], module, scope_stack, builder)),
+        })
+        builder.position_at_end(cur_block)
+        builder.branch(start_block)
+        builder.position_at_end(label_block)
+        parse_statement(exp[5], module, scope_stack, builder)
+        builder.branch(end_block)
+        builder.position_at_end(loop_stack[-1]['start'])
+        builder.branch(end_block)
+        builder.position_at_start(end_block)
+        loop_stack.pop()
 
 
 
 def parse_iteration_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
-    print(len(exp), exp)
+    if len(exp) == 8 and exp[1][1] == 'for':
+        parse_expression_statement(exp[3], module, scope_stack, builder)
+        start_block = builder.append_basic_block('start_for')
+        builder.branch(start_block)
+        builder.position_at_start(start_block)
+        condition_in = parse_expression_statement(exp[4], module, scope_stack, builder)
+        with builder.if_then(condition_in) as end_block:
+            update_block = builder.append_basic_block('update_for')
+            loop_stack.append({
+                'start': start_block,
+                'end': end_block,
+                'continue': update_block
+            })
+            parse_statement(exp[7], module, scope_stack, builder)
+            builder.branch(update_block)
+            builder.position_at_start(update_block)
+            parse_expression(exp[5], module, scope_stack, builder)
+            builder.branch(start_block)
+        loop_stack.pop()
+    elif len(exp) == 8 and exp[1][1] == 'do':
+        start_block = builder.append_basic_block('start_do_while')
+        builder.branch(start_block)
+        continue_block = builder.append_basic_block('continue_do_while')
+        builder.position_at_start(continue_block)
+        condition_in = parse_expression(exp[5], module, scope_stack, builder)
+        with builder.if_then(condition_in) as end_block:
+            builder.branch(start_block)
+            loop_stack.append({
+                'start': start_block,
+                'end': end_block,
+                'continue': continue_block
+            })
+            builder.position_at_start(start_block)
+            parse_statement(exp[2], module, scope_stack, builder)
+            builder.branch(continue_block)
+        loop_stack.pop()
+    elif len(exp) == 7:
+        parse_expression_statement(exp[3], module, scope_stack, builder)
+        start_block = builder.append_basic_block('start_for')
+        builder.branch(start_block)
+        builder.position_at_start(start_block)
+        condition_in = parse_expression_statement(exp[4], module, scope_stack, builder)
+        with builder.if_then(condition_in) as end_block:
+            loop_stack.append({
+                'start': start_block,
+                'end': end_block,
+                'continue': start_block
+            })
+            parse_statement(exp[6], module, scope_stack, builder)
+            builder.branch(start_block)
+        loop_stack.pop()
+    elif len(exp) == 6:
+        start_block = builder.append_basic_block('start_while')
+        builder.branch(start_block)
+        builder.position_at_start(start_block)
+        condition_in = parse_expression(exp[3], module, scope_stack, builder)
+        with builder.if_then(condition_in) as end_block:
+            loop_stack.append({
+                'start': start_block,
+                'end': end_block,
+                'continue': start_block
+            })
+            parse_statement(exp[5], module, scope_stack, builder)
+            builder.branch(start_block)
+        loop_stack.pop()
+
 
 
 def parse_jump_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
@@ -597,6 +718,12 @@ def parse_jump_statement(exp, module: ir.Module, scope_stack: list, builder: ir.
         builder.ret(val)
     elif len(exp) == 3 and exp[1][1] == 'return':
         builder.ret_void()
+    elif len(exp) == 3 and exp[1][1] == 'break':
+        with builder.if_then(ir.IntType(1)(1)):
+            builder.branch(loop_stack[-1]['end'])
+    elif len(exp) == 3 and exp[1][1] == 'continue':
+        with builder.if_then(ir.IntType(1)(1)):
+            builder.branch(loop_stack[-1]['continue'])
 
 def parse_translation_unit(exp, module: ir.Module = None, scope_stack: list = None):
     start = False
@@ -623,10 +750,10 @@ def parse_external_declaration(exp, module: ir.Module, scope_stack: list):
         parse_declaration(exp[1], module, scope_stack)
 
 
-def parse_function_definition(exp, module: ir.Module, scope_stack: list):
+def parse_function_definition(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder = None):
     if len(exp) == 4 and exp[1][0] == 'declaration_specifiers':
         return_type = parse_declaration_specifiers(exp[1])
-        func_data = parse_declarator(exp[2])
+        func_data = parse_declarator(exp[2], module, scope_stack, builder)
         func = insert_function(module, scope_stack, return_type, func_data[1], func_data[2])
         block = func.append_basic_block(name="entry")
         builder = ir.IRBuilder(block)
