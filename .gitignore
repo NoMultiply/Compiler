@@ -9,3 +9,4 @@ main.cpp
 test.o
 *.pyc
 result.txt
+temp.py
