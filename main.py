@@ -14,14 +14,15 @@ data = precompile(file_in.readlines())
 #         break
 #     print(tok)
 #
+
 parser = YaccParser()
 try:
     result = parser.parser.parse(data, lexer=lexer)
-    print(result)
+    # print(result)
     assert result[0] == 'translation_unit'
     data = parse_translation_unit(result)
-    print()
-    print(data)
+    # print()
+    # print(data)
     file_out = open('test.ll', 'w')
     file_out.write(data)
 except ParseError as e:

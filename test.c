@@ -1,10 +1,17 @@
 #include <stdio.h>
+#include <string.h>
 
 int main() {
-    int a[10], i;
-    for (i = 0; i < 10; i++) {
-        a[i] = i + 1;
-        printf("%d\n", a[i]);
+    char str[100];
+    int i, l;
+    scanf("%s", str);
+    l = strlen(str);
+    for (i = 0; i < l / 2; ++i) {
+        if (str[i] != str[l - 1 - i]) {
+            printf("不是回文字符串\n");
+            return 0;
+        }
     }
+    printf("是回文字符串\n");
     return 0;
 }

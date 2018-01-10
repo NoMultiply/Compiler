@@ -10,3 +10,4 @@ test.o
 *.pyc
 result.txt
 temp.py
+test0.ll

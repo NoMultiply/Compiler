@@ -105,7 +105,7 @@ def t_CHARACTER(t):
     return t
 
 def t_DOUBLE(t):
-    r"""\d+.\d+"""
+    r"""\d+\.\d+"""
     t.value = ('double', t.value)
     t.type = 'CONSTANT'
     return t

@@ -1,6 +1,42 @@
 import ply.yacc as yacc
 from lex import tokens, type_list
-from Compiler import *
+
+from Compiler import parse_pointer
+
+def deal_direct_declarator(exp):
+    if len(exp) == 2:
+        return exp[1]
+
+def deal_declarator(exp):
+    if len(exp) == 2:
+        return deal_direct_declarator(exp[1])
+    else:
+        return ('pointer', parse_pointer(exp[1]), deal_direct_declarator(exp[2]))
+
+def deal_init_declarator(exp):
+    return deal_declarator(exp[1])
+
+def deal_init_declarator_list(exp):
+    result = []
+    for i in range(1, len(exp)):
+        if exp[i][0] == 'init_declarator_list':
+            result.extend(deal_init_declarator_list(exp[i]))
+        elif exp[i][0] == 'init_declarator':
+            result.append(deal_init_declarator(exp[i]))
+    return result
+
+
+def deal_declaration_specifiers(exp):
+    if len(exp) == 3 and exp[1][0] == 'storage_class_specifier':
+        return exp[1][1][1]
+
+def deal_declaration(exp):
+    declaration_specifiers = deal_declaration_specifiers(exp[1])
+    if len(exp) == 4:
+        init_declarator_list = deal_init_declarator_list(exp[2])
+        if declaration_specifiers == 'typedef':
+            for init_declarator in init_declarator_list:
+                type_list.append(init_declarator[1])
 
 
 class ParseError(Exception):
@@ -14,7 +50,6 @@ class YaccParser(object):
         self.parser = yacc.yacc(module=self,
                                 debug=False,
                                 start='translation_unit')
-
 
     # 后缀表达式：
     def p_postfix_expression(self, p):
@@ -200,13 +235,8 @@ class YaccParser(object):
         """declaration : declaration_specifiers ';'
                        | declaration_specifiers init_declarator_list ';'
         """
-        # if len(p) == 4:
-        #     retult = parse_declaration_specifiers(p[1])
-        #     if retult:
-        #         declarator_list = parse_init_declarator_list(p[2])
-        #         type_list.extend(declarator_list)
-
         p[0] = ('declaration', *p[1:])
+        deal_declaration(p[0])
 
     # 声明说明符
     def p_declaration_specifiers(self, p):
@@ -551,4 +581,3 @@ class YaccParser(object):
     def p_error(self, p):
         print(p)
         raise ParseError(p.lexpos)
-        print("Syntax error in input!")
