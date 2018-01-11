@@ -10,5 +10,9 @@ test.o
 *.pyc
 result.txt
 temp.py
-test0.ll
+*.ll
 pos
+main.spec
+dist/
+build/
+PalindromeString.c

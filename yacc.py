@@ -579,4 +579,5 @@ class YaccParser(object):
         p[0] = ('function_definition', *p[1:])
 
     def p_error(self, p):
+        # print(p)
         raise ParseError(p.lexpos)

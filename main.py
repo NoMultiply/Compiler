@@ -14,21 +14,21 @@ def Compile(data):
         print("Parse Successfully")
         return data
     except ParseError as e:
+        print(data[:e.pos])
         print("Lexical or Syntax Error")
     except:
         print("Error when generate IR")
     return None
 
 def main(argv: list):
-    infile = ''
-    outfile = ''
     if len(argv) == 2:
         infile = argv[1]
+        outfile = ''
     elif len(argv) == 4 and argv[1] == '-o':
         outfile = argv[2]
         infile = argv[3]
     else:
-        print('Usage: python main.py [-o outfile] infile')
+        print('Usage: Compile [-o outfile] infile')
         return
     try:
         filein = open(infile, 'r')
@@ -43,6 +43,7 @@ def main(argv: list):
             fileout = open(outfile, 'w')
             fileout.write(data)
             fileout.close()
+            print('Output file: ', outfile)
     except FileNotFoundError:
         print('Cannot find file: ', infile)
 
