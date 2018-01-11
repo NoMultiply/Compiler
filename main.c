@@ -171,6 +171,10 @@ int main() {
                             error = 1;
                             break;
                         }
+                        if (top_stack(&opt_stack, &top)) {
+                            error = 1;
+                            break;
+                        }
                     }
                     if (error) {
                         break;
@@ -180,6 +184,9 @@ int main() {
                         break;
                     }
                 }
+            }
+            else if (str[i] == ' ') {
+                continue;
             }
             else {
                 error = 1;
@@ -199,7 +206,7 @@ int main() {
             double num;
             pop_stack(&num_stack, &num);
             str[l - 1] = '\0';
-            printf("Result: %s=%g\n", str, num);
+            printf("Result: %s = %g\n", str, num);
         }
     }
     return 0;

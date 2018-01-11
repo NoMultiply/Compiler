@@ -93,6 +93,11 @@ t_OR_ASSIGN = r'\|\='
 t_ignore = ' \t\v\n\f'
 
 
+def t_COMMENT(t):
+    r"""\/\*"""
+    comment()
+    t.type = 'ignore'
+
 def t_STRING_LITERAL(t):
     r"""\"(\.|[^\"])*\""""
     t.value = ('string', t.value)
@@ -100,13 +105,14 @@ def t_STRING_LITERAL(t):
 
 def t_CHARACTER(t):
     r"""\'(\\.|[^\\\'])+\'"""
-    t.value = ('char', t.value)
+    val = eval('%s' % t.value)
+    t.value = ('char', ord(val))
     t.type = 'CONSTANT'
     return t
 
 def t_DOUBLE(t):
     r"""\d+\.\d+"""
-    t.value = ('double', t.value)
+    t.value = ('double', float(t.value))
     t.type = 'CONSTANT'
     return t
 
@@ -134,6 +140,22 @@ def t_IDENTIFIER(t):
 def t_error(t):
     print("Illegal character '%s'" % t.value[0])
     t.lexer.skip(1)
+
+
+def comment():
+    while True:
+        while True:
+            c = lexer.next()
+            if c.value != '*':
+                print(c.value, end='')
+            else:
+                break
+        c = lexer.next()
+        if c.value != '/':
+            print(c.value, end='')
+            pass
+        else:
+            break
 
 
 lexer = lex.lex()
