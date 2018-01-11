@@ -1,5 +1,6 @@
 from IRLibs import *
 
+
 def parse_postfix_expression(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 2:
         return parse_primary_expression(exp[1], module, scope_stack, builder)
@@ -94,6 +95,7 @@ def parse_unary_expression(exp, module: ir.Module, scope_stack: list, builder: i
         opt_store(builder, temp, get_pointer(scope_stack, builder, unary_expression))
         return temp
 
+
 def parse_unary_operator(exp):
     return exp[1]
 
@@ -186,6 +188,7 @@ def parse_assignment_expression(exp, module: ir.Module, scope_stack: list, build
         elif assignment_operator == '^=':
             temp = builder.xor(left, right)
             opt_store(builder, temp, left)
+
 
 def parse_assignment_operator(exp):
     return exp[1]
@@ -387,6 +390,7 @@ def parse_declaration(exp, module: ir.Module, scope_stack: list, builder: ir.IRB
     elif len(exp) == 2:
         pass
 
+
 def parse_declaration_specifiers(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     result = []
     if exp[1][0] == 'storage_class_specifier':
@@ -416,6 +420,7 @@ def parse_init_declarator(exp, module: ir.Module, scope_stack: list, builder: ir
     if len(exp) == 4:
         initializer = parse_initializer(exp[3], module, scope_stack, builder)
     return (declarator, initializer)
+
 
 def parse_storage_class_specifier(exp):
     return exp[1][1]
@@ -735,7 +740,6 @@ def parse_selection_statement(exp, module: ir.Module, scope_stack: list, builder
         loop_stack.pop()
 
 
-
 def parse_iteration_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 8 and exp[1][1] == 'for':
         parse_expression_statement(exp[3], module, scope_stack, builder)
@@ -808,7 +812,6 @@ def parse_iteration_statement(exp, module: ir.Module, scope_stack: list, builder
         loop_stack.pop()
 
 
-
 def parse_jump_statement(exp, module: ir.Module, scope_stack: list, builder: ir.IRBuilder):
     if len(exp) == 4 and exp[1][1] == 'return':
         val = get_value(scope_stack, builder, parse_expression(exp[2], module, scope_stack, builder))
@@ -830,6 +833,7 @@ def parse_jump_statement(exp, module: ir.Module, scope_stack: list, builder: ir.
     elif len(exp) == 3 and exp[1][1] == 'continue':
         with builder.if_then(bool_type(1)):
             builder.branch(loop_stack[-1]['continue'])
+
 
 def parse_translation_unit(exp, module: ir.Module = None, scope_stack: list = None):
     start = False
@@ -896,3 +900,4 @@ def parse_function_definition(exp, module: ir.Module, scope_stack: list, builder
         scope_stack.pop()
     else:
         pass
+

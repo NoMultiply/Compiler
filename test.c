@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string.h>
+
 void makeNext(const char P[],int next[])
 {
     int q,k;
     int m = strlen(P);
+    int a = 1.0;
     next[0] = 0;
     for (q = 1,k = 0; q < m; ++q)
     {
